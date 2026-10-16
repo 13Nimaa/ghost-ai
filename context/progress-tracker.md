@@ -8,12 +8,13 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Goal
 
-- Provide the base editor chrome — top navbar and floating project sidebar shell (`02-editor-chrome.md`).
+- Continue with the next feature spec.
 
 ## Completed
 
 - `01-design-system.md` — shadcn/ui initialized and configured (Tailwind v4, style `radix-nova`, Lucide icons). Added `components/ui/` primitives: Button, Card, Dialog, Input, Tabs, Textarea, ScrollArea. `lucide-react` installed. `lib/utils.ts` exposes `cn()` (re-exported from the `cn` package, a clsx + tailwind-merge replacement). Verified with `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
 - `02-editor-chrome.md` — added `components/editor/editor-navbar.tsx` (fixed-height bar, left/center/right sections, sidebar toggle switching between `PanelLeftOpen`/`PanelLeftClose`), `components/editor/project-sidebar.tsx` (floating overlay that slides in from the left, `Projects` header + close button, shadcn `Tabs` for My Projects / Shared with empty placeholder states, full-width `New Project` button with `Plus` icon), and `components/editor/editor-dialog.tsx` (token-styled dialog pattern exposing title, description, and footer — no concrete dialogs yet). Wired the Ghost design tokens into `app/globals.css` and mounted the chrome at a visible `/editor` route. Verified with `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+- `03-auth.md` — installed `@clerk/ui` and wired Clerk into the app: `ClerkProvider` in `app/layout.tsx` with `dark` theme from `@clerk/ui/themes` plus Ghost CSS-variable overrides (no hardcoded colors), `proxy.ts` at root using `clerkMiddleware` + `createRouteMatcher` with public routes from `NEXT_PUBLIC_CLERK_SIGN_IN_URL`/`NEXT_PUBLIC_CLERK_SIGN_UP_URL` (falling back to `/sign-in`/`/sign-up`) protecting everything else, minimal two-panel sign-in/sign-up pages (`components/auth/auth-layout.tsx` + `app/sign-in/[[...sign-in]]` + `app/sign-up/[[...sign-up]]`, token-styled, form-only on small screens), `/` redirects (authenticated → `/editor`, unauthenticated → sign-in URL), and Clerk `UserButton` in the editor navbar right section with default menu flows intact. Verified with `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
 
 ## In Progress
 
@@ -44,3 +45,6 @@ Update this file whenever the current phase, active feature, or implementation s
 - Wired the Ghost tokens: CSS variables (`--bg-base`, `--bg-surface`, `--bg-elevated`, `--bg-subtle`, `--border-default`, `--border-subtle`, `--text-*`, `--accent-primary`, `--accent-primary-dim`, `--accent-ai`, `--accent-ai-text`, `--state-*`) plus `@theme inline` mappings (`bg-base`, `bg-surface`, `bg-elevated`, `bg-subtle`, `border-surface-border`, `border-subtle-border`, `text-copy-*`, `text-brand`, `bg-accent-dim`, `text-ai`, `text-ai-text`, `text-state-*`). The base `body` now applies `bg-base text-copy-primary`.
 - Set `dark` on `<html>` in `app/layout.tsx` so shadcn's component tokens resolve to dark values (the app is dark-only).
 - `components/editor/editor-dialog.tsx` wraps shadcn `Dialog` and overrides its surface with the Ghost tokens (elevated background, surface border, `rounded-3xl`, backdrop blur). It is a reusable pattern only — no dialogs are instantiated yet.
+- Auth routes (`/`, `/sign-in`, `/sign-up`) set `export const instant = false` so `cacheComponents` prerender validation allows their runtime behavior (`auth()` redirect on `/`, Clerk `usePathname()`/browser render in `<SignIn>`/`<SignUp>` wrapped in `<Suspense>`). They render as dynamic/partial-prerender routes in `npm run build`.
+- Clerk public-route matching uses `createRouteMatcher()` with the standard `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` env vars (falling back to `/sign-in` / `/sign-up`). No env vars were renamed or invented.
+- Fix: those two URL vars were missing from `.env.local`, so `auth.protect()` redirected to Clerk's hosted `accounts.dev` sign-in instead of the custom `/sign-in` page. Added `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` to `.env.local` (dev server restart required to pick them up). Verified with `npm run build`.
