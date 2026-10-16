@@ -10,27 +10,29 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+import Link from "next/link"
+
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  ownedMockProjects,
-  sharedMockProjects,
-  type MockProject,
-} from "@/components/editor/use-project-dialogs"
+import type { ProjectListItem } from "@/lib/projects"
 import { cn } from "@/lib/utils"
 
 interface ProjectSidebarProps {
   isOpen: boolean
   onClose: () => void
+  ownedProjects: ProjectListItem[]
+  sharedProjects: ProjectListItem[]
   onCreate: () => void
-  onRename: (project: MockProject) => void
-  onDelete: (project: MockProject) => void
+  onRename: (project: ProjectListItem) => void
+  onDelete: (project: ProjectListItem) => void
 }
 
 export function ProjectSidebar({
   isOpen,
   onClose,
+  ownedProjects,
+  sharedProjects,
   onCreate,
   onRename,
   onDelete,
@@ -77,11 +79,11 @@ export function ProjectSidebar({
 
           <ScrollArea className="min-h-0 flex-1">
             <TabsContent value="my-projects" className="p-4">
-              {ownedMockProjects.length === 0 ? (
+              {ownedProjects.length === 0 ? (
                 <EmptyPlaceholder icon={FolderOpen} label="No projects yet" />
               ) : (
                 <ul className="flex flex-col gap-1">
-                  {ownedMockProjects.map((project) => (
+                  {ownedProjects.map((project) => (
                     <ProjectRow
                       key={project.id}
                       project={project}
@@ -94,11 +96,11 @@ export function ProjectSidebar({
               )}
             </TabsContent>
             <TabsContent value="shared" className="p-4">
-              {sharedMockProjects.length === 0 ? (
+              {sharedProjects.length === 0 ? (
                 <EmptyPlaceholder icon={Users} label="No shared projects" />
               ) : (
                 <ul className="flex flex-col gap-1">
-                  {sharedMockProjects.map((project) => (
+                  {sharedProjects.map((project) => (
                     <ProjectRow
                       key={project.id}
                       project={project}
@@ -133,16 +135,19 @@ function ProjectRow({
   onRename,
   onDelete,
 }: {
-  project: MockProject
+  project: ProjectListItem
   owned: boolean
-  onRename: (project: MockProject) => void
-  onDelete: (project: MockProject) => void
+  onRename: (project: ProjectListItem) => void
+  onDelete: (project: ProjectListItem) => void
 }) {
   return (
     <li className="group flex items-center gap-1 rounded-xl px-3 py-2 hover:bg-subtle">
-      <span className="min-w-0 flex-1 truncate text-sm text-copy-primary">
+      <Link
+        href={`/editor/${project.id}`}
+        className="min-w-0 flex-1 truncate text-sm text-copy-primary"
+      >
         {project.name}
-      </span>
+      </Link>
       {owned ? (
         <span className="flex shrink-0 items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
           <Button

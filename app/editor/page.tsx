@@ -1,34 +1,32 @@
-"use client"
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-import { useState } from "react"
+import { EditorShell } from "@/components/editor/editor-shell";
+import { getOwnedProjects, getSharedProjects } from "@/lib/projects";
 
-import { EditorHome } from "@/components/editor/editor-home"
-import { EditorNavbar } from "@/components/editor/editor-navbar"
-import { ProjectDialogs } from "@/components/editor/project-dialogs"
-import { ProjectSidebar } from "@/components/editor/project-sidebar"
-import { useProjectDialogs } from "@/components/editor/use-project-dialogs"
+export const instant = false;
 
-export default function EditorPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const dialogs = useProjectDialogs()
+export default async function EditorPage() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect(process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || "/sign-in");
+  }
+
+  const user = await currentUser();
+  const email =
+    user?.emailAddresses.find(
+      (address) => address.id === user.primaryEmailAddressId,
+    )?.emailAddress ??
+    user?.emailAddresses[0]?.emailAddress ??
+    "";
+
+  const [ownedProjects, sharedProjects] = await Promise.all([
+    getOwnedProjects(userId),
+    getSharedProjects(email),
+  ]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-base">
-      <EditorNavbar
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
-      />
-      <main className="relative flex-1">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onCreate={dialogs.openCreate}
-          onRename={dialogs.openRename}
-          onDelete={dialogs.openDelete}
-        />
-        <EditorHome onNewProject={dialogs.openCreate} />
-      </main>
-      <ProjectDialogs dialogs={dialogs} />
-    </div>
-  )
+    <EditorShell ownedProjects={ownedProjects} sharedProjects={sharedProjects} />
+  );
 }
