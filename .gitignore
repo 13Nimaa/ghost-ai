@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 2_5312367142010660522.mp4
+
+/lib/generated/prisma
+ 
