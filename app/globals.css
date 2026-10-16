@@ -155,7 +155,13 @@
   --state-success: #34d399;
   --state-warning: #fbbf24;
 }
-
+*,
+*::before,
+*::after {
+  cursor: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
 @layer base {
   * {
     @apply border-border outline-ring/50;
