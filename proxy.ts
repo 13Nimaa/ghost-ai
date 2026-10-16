@@ -8,7 +8,14 @@ const isPublicRoute = createRouteMatcher([
   `${signUpUrl}(.*)`,
 ]);
 
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
+
 export default clerkMiddleware(async (auth, request) => {
+  // API routes enforce auth inside their handlers and return JSON 401s,
+  // so the middleware must not redirect them to the sign-in page.
+  if (isApiRoute(request)) {
+    return;
+  }
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
