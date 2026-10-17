@@ -1,13 +1,12 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation"
 
-import { EditorShell } from "@/components/editor/editor-shell";
-import { EditorWorkspace } from "@/components/editor/editor-workspace";
+import { AccessDenied } from "@/components/editor/access-denied"
+import { EditorWorkspace } from "@/components/editor/editor-workspace"
 import {
-  getAccessibleProject,
-  getOwnedProjects,
-  getSharedProjects,
-} from "@/lib/projects";
+  checkProjectAccess,
+  getCurrentClerkIdentity,
+} from "@/lib/project-access"
+import { getOwnedProjects, getSharedProjects } from "@/lib/projects"
 
 export const instant = false;
 
@@ -17,38 +16,33 @@ export default async function WorkspacePage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const { userId } = await auth();
+  const identity = await getCurrentClerkIdentity();
 
-  if (!userId) {
+  if (!identity.userId) {
     redirect(process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || "/sign-in");
   }
 
-  const user = await currentUser();
-  const email =
-    user?.emailAddresses.find(
-      (address) => address.id === user.primaryEmailAddressId,
-    )?.emailAddress ??
-    user?.emailAddresses[0]?.emailAddress ??
-    "";
-
-  const project = await getAccessibleProject(projectId, userId, email);
+  const project = await checkProjectAccess(
+    projectId,
+    identity.userId,
+    identity.email
+  );
 
   if (!project) {
-    redirect("/editor");
+    return <AccessDenied />;
   }
 
   const [ownedProjects, sharedProjects] = await Promise.all([
-    getOwnedProjects(userId),
-    getSharedProjects(email),
+    getOwnedProjects(identity.userId),
+    getSharedProjects(identity.email),
   ]);
 
   return (
-    <EditorShell
+    <EditorWorkspace
+      projectName={project.name}
+      activeProjectId={project.id}
       ownedProjects={ownedProjects}
       sharedProjects={sharedProjects}
-      activeProjectId={project.id}
-    >
-      <EditorWorkspace projectName={project.name} />
-    </EditorShell>
+    />
   );
 }

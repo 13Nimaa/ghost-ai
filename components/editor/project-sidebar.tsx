@@ -9,6 +9,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 
 import Link from "next/link"
 
@@ -23,6 +24,7 @@ interface ProjectSidebarProps {
   onClose: () => void
   ownedProjects: ProjectListItem[]
   sharedProjects: ProjectListItem[]
+  activeProjectId?: string
   onCreate: () => void
   onRename: (project: ProjectListItem) => void
   onDelete: (project: ProjectListItem) => void
@@ -33,10 +35,18 @@ export function ProjectSidebar({
   onClose,
   ownedProjects,
   sharedProjects,
+  activeProjectId,
   onCreate,
   onRename,
   onDelete,
 }: ProjectSidebarProps) {
+  const { user } = useUser()
+  const avatarInitial = (
+    user?.firstName?.[0] ??
+    user?.emailAddresses[0]?.emailAddress?.[0] ??
+    "?"
+  ).toUpperCase()
+
   return (
     <>
       {isOpen ? (
@@ -50,8 +60,10 @@ export function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "fixed bottom-0 left-0 top-14 z-40 flex w-72 flex-col rounded-r-2xl border-r border-surface-border bg-surface/95 backdrop-blur-sm transition-transform duration-300 ease-out",
-          isOpen ? "translate-x-0" : "pointer-events-none -translate-x-full"
+          "fixed bottom-2 left-2 top-16 z-40 flex w-72 flex-col rounded-2xl border border-surface-border bg-surface/95 backdrop-blur-sm transition-transform duration-300 ease-out",
+          isOpen
+            ? "translate-x-0"
+            : "pointer-events-none -translate-x-full"
         )}
       >
         <div className="flex items-center justify-between border-b border-surface-border px-4 py-3">
@@ -71,9 +83,19 @@ export function ProjectSidebar({
 
         <Tabs defaultValue="my-projects" className="min-h-0 flex-1 gap-0">
           <div className="px-4 pt-4">
-            <TabsList className="w-full">
-              <TabsTrigger value="my-projects">My Projects</TabsTrigger>
-              <TabsTrigger value="shared">Shared</TabsTrigger>
+            <TabsList className="h-9 w-full rounded-full border border-subtle-border bg-elevated p-1">
+              <TabsTrigger
+                value="my-projects"
+                className="rounded-full px-3 text-xs font-medium text-copy-muted data-active:bg-surface data-active:text-copy-primary"
+              >
+                My Projects
+              </TabsTrigger>
+              <TabsTrigger
+                value="shared"
+                className="rounded-full px-3 text-xs font-medium text-copy-muted data-active:bg-surface data-active:text-copy-primary"
+              >
+                Shared
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -88,6 +110,7 @@ export function ProjectSidebar({
                       key={project.id}
                       project={project}
                       owned
+                      isActive={project.id === activeProjectId}
                       onRename={onRename}
                       onDelete={onDelete}
                     />
@@ -105,6 +128,7 @@ export function ProjectSidebar({
                       key={project.id}
                       project={project}
                       owned={false}
+                      isActive={project.id === activeProjectId}
                       onRename={onRename}
                       onDelete={onDelete}
                     />
@@ -113,12 +137,19 @@ export function ProjectSidebar({
               )}
             </TabsContent>
           </ScrollArea>
+
         </Tabs>
 
-        <div className="border-t border-surface-border p-4">
+        <div className="flex items-center gap-2 border-t border-surface-border p-3">
+          <span
+            aria-hidden
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-surface-border bg-elevated text-sm font-medium text-copy-secondary"
+          >
+            {avatarInitial}
+          </span>
           <Button
             onClick={onCreate}
-            className="w-full bg-accent-dim text-brand hover:bg-brand/20"
+            className="h-9 flex-1 rounded-full bg-brand text-on-brand hover:bg-brand/90"
           >
             <Plus />
             New Project
@@ -132,19 +163,36 @@ export function ProjectSidebar({
 function ProjectRow({
   project,
   owned,
+  isActive,
   onRename,
   onDelete,
 }: {
   project: ProjectListItem
   owned: boolean
+  isActive: boolean
   onRename: (project: ProjectListItem) => void
   onDelete: (project: ProjectListItem) => void
 }) {
   return (
-    <li className="group flex items-center gap-1 rounded-xl px-3 py-2 hover:bg-subtle">
+    <li
+      className={cn(
+        "group flex items-center gap-1 rounded-xl px-3 py-2",
+        isActive ? "bg-accent-dim" : "hover:bg-subtle"
+      )}
+    >
+      {isActive ? (
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+        />
+      ) : null}
       <Link
         href={`/editor/${project.id}`}
-        className="min-w-0 flex-1 truncate text-sm text-copy-primary"
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm",
+          isActive ? "font-medium text-copy-primary" : "text-copy-primary"
+        )}
       >
         {project.name}
       </Link>
