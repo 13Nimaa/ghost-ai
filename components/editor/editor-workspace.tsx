@@ -30,6 +30,7 @@ export function EditorWorkspace({
 }: EditorWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false)
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
   const actions = useProjectActions({ activeProjectId })
   const share = useShareDialog({
     projectId: activeProjectId,
@@ -45,6 +46,7 @@ export function EditorWorkspace({
         isAiPanelOpen={isAiPanelOpen}
         onToggleAiPanel={() => setIsAiPanelOpen((open) => !open)}
         onShare={share.open}
+        onOpenTemplates={() => setIsTemplatesOpen(true)}
       />
       <main className="relative flex-1">
         <ProjectSidebar
@@ -57,7 +59,11 @@ export function EditorWorkspace({
           onRename={actions.openRename}
           onDelete={actions.openDelete}
         />
-        <CollaborativeCanvas roomId={activeProjectId} />
+        <CollaborativeCanvas
+          roomId={activeProjectId}
+          isTemplatesOpen={isTemplatesOpen}
+          onTemplatesOpenChange={setIsTemplatesOpen}
+        />
         <AiPanelPlaceholder isOpen={isAiPanelOpen} />
       </main>
       <ProjectDialogs dialogs={actions} />
