@@ -58,6 +58,7 @@
   --color-copy-muted: var(--text-muted);
   --color-copy-faint: var(--text-faint);
   --color-brand: var(--accent-primary);
+  --color-on-brand: var(--bg-base);
   --color-accent-dim: var(--accent-primary-dim);
   --color-ai: var(--accent-ai);
   --color-ai-text: var(--accent-ai-text);
@@ -155,10 +156,9 @@
   --state-success: #34d399;
   --state-warning: #fbbf24;
 }
-*,
-*::before,
-*::after {
-  cursor: none !important;
+*{
+  
+
   user-select: none;
   -webkit-user-select: none;
 }

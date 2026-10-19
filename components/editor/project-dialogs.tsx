@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EditorDialog } from "@/components/editor/editor-dialog"
-import type { ProjectDialogsController } from "@/components/editor/use-project-dialogs"
+import type { ProjectActionsController } from "@/hooks/use-project-actions"
 
 export function ProjectDialogs({
   dialogs,
 }: {
-  dialogs: ProjectDialogsController
+  dialogs: ProjectActionsController
 }) {
   return (
     <>
@@ -22,7 +22,7 @@ export function ProjectDialogs({
 function CreateProjectDialog({
   dialogs,
 }: {
-  dialogs: ProjectDialogsController
+  dialogs: ProjectActionsController
 }) {
   const open = dialogs.activeDialog === "create"
 
@@ -70,11 +70,14 @@ function CreateProjectDialog({
           autoFocus={open}
         />
         <p className="text-sm text-copy-muted">
-          Slug:{" "}
+          Project slug preview:{" "}
           <span className="font-mono text-copy-secondary">
-            {dialogs.slugPreview || "—"}
+            {dialogs.roomIdPreview || "—"}
           </span>
         </p>
+        {dialogs.error ? (
+          <p className="text-sm text-state-error">{dialogs.error}</p>
+        ) : null}
       </form>
     </EditorDialog>
   )
@@ -83,7 +86,7 @@ function CreateProjectDialog({
 function RenameProjectDialog({
   dialogs,
 }: {
-  dialogs: ProjectDialogsController
+  dialogs: ProjectActionsController
 }) {
   const open = dialogs.activeDialog === "rename"
 
@@ -133,6 +136,9 @@ function RenameProjectDialog({
           aria-label="Project name"
           autoFocus={open}
         />
+        {dialogs.error ? (
+          <p className="pt-2 text-sm text-state-error">{dialogs.error}</p>
+        ) : null}
       </form>
     </EditorDialog>
   )
@@ -141,7 +147,7 @@ function RenameProjectDialog({
 function DeleteProjectDialog({
   dialogs,
 }: {
-  dialogs: ProjectDialogsController
+  dialogs: ProjectActionsController
 }) {
   return (
     <EditorDialog
@@ -173,6 +179,10 @@ function DeleteProjectDialog({
           </Button>
         </>
       }
-    />
+    >
+      {dialogs.error ? (
+        <p className="text-sm text-state-error">{dialogs.error}</p>
+      ) : null}
+    </EditorDialog>
   )
 }
