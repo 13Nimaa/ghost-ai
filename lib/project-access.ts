@@ -6,13 +6,15 @@ import { getAccessibleProject, type AccessibleProject } from "@/lib/projects"
 export interface ClerkIdentity {
   userId: string | null
   email: string
+  name: string
+  avatar: string
 }
 
 export async function getCurrentClerkIdentity(): Promise<ClerkIdentity> {
   const { userId } = await auth()
 
   if (!userId) {
-    return { userId: null, email: "" }
+    return { userId: null, email: "", name: "", avatar: "" }
   }
 
   const user = await currentUser()
@@ -22,8 +24,13 @@ export async function getCurrentClerkIdentity(): Promise<ClerkIdentity> {
     )?.emailAddress ??
     user?.emailAddresses[0]?.emailAddress ??
     ""
+  const name =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.username ||
+    email ||
+    "Anonymous"
 
-  return { userId, email }
+  return { userId, email, name, avatar: user?.imageUrl ?? "" }
 }
 
 export async function checkProjectAccess(

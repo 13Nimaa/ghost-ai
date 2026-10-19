@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, type CSSProperties } from "react"
-import { Bot, Compass, Sparkles } from "lucide-react"
+import { useState } from "react"
+import { Bot, Sparkles } from "lucide-react"
 
+import { CollaborativeCanvas } from "@/components/editor/collaborative-canvas"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectDialogs } from "@/components/editor/project-dialogs"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
@@ -56,49 +57,11 @@ export function EditorWorkspace({
           onRename={actions.openRename}
           onDelete={actions.openDelete}
         />
-        <CanvasPlaceholder />
+        <CollaborativeCanvas roomId={activeProjectId} />
         <AiPanelPlaceholder isOpen={isAiPanelOpen} />
       </main>
       <ProjectDialogs dialogs={actions} />
       <ShareDialog controller={share} />
-    </div>
-  )
-}
-
-const CANVAS_GRID_STYLE: CSSProperties = {
-  backgroundImage:
-    "linear-gradient(to right, color-mix(in oklab, var(--border-default) 55%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--border-default) 55%, transparent) 1px, transparent 1px)",
-  backgroundSize: "56px 56px",
-}
-
-const CANVAS_GLOW_STYLE: CSSProperties = {
-  backgroundImage:
-    "radial-gradient(ellipse 55% 45% at 50% 30%, color-mix(in oklab, var(--accent-primary) 12%, transparent), transparent 70%)",
-}
-
-function CanvasPlaceholder() {
-  return (
-    <div className="h-full w-full p-2">
-      <div className="relative flex h-full w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-2xl border border-surface-border bg-surface px-6 text-center">
-        <div aria-hidden className="absolute inset-0" style={CANVAS_GRID_STYLE} />
-        <div aria-hidden className="absolute inset-0" style={CANVAS_GLOW_STYLE} />
-        <div className="relative flex flex-col items-center gap-5">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-subtle-border bg-elevated">
-            <Compass className="h-6 w-6 text-brand" />
-          </div>
-          <p className="text-xs font-medium uppercase tracking-[0.35em] text-copy-faint">
-            Workspace shell
-          </p>
-          <h1 className="max-w-xl font-heading text-2xl font-medium text-copy-primary md:text-3xl">
-            Canvas and collaboration tooling land here next.
-          </h1>
-          <p className="max-w-md text-sm leading-relaxed text-copy-muted">
-            This room is ready for the shared architecture canvas, durable AI
-            workflows, and real-time presence. For now, the shell is wired with
-            project context and navigation only.
-          </p>
-        </div>
-      </div>
     </div>
   )
 }
