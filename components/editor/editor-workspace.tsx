@@ -6,13 +6,16 @@ import { Bot, Compass, Sparkles } from "lucide-react"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectDialogs } from "@/components/editor/project-dialogs"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
+import { ShareDialog } from "@/components/editor/share-dialog"
 import { useProjectActions } from "@/hooks/use-project-actions"
+import { useShareDialog } from "@/hooks/use-share-dialog"
 import type { ProjectListItem } from "@/lib/projects"
 import { cn } from "@/lib/utils"
 
 interface EditorWorkspaceProps {
   projectName: string
   activeProjectId: string
+  isOwner: boolean
   ownedProjects: ProjectListItem[]
   sharedProjects: ProjectListItem[]
 }
@@ -20,12 +23,17 @@ interface EditorWorkspaceProps {
 export function EditorWorkspace({
   projectName,
   activeProjectId,
+  isOwner,
   ownedProjects,
   sharedProjects,
 }: EditorWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false)
   const actions = useProjectActions({ activeProjectId })
+  const share = useShareDialog({
+    projectId: activeProjectId,
+    initialIsOwner: isOwner,
+  })
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-base">
@@ -35,6 +43,7 @@ export function EditorWorkspace({
         projectName={projectName}
         isAiPanelOpen={isAiPanelOpen}
         onToggleAiPanel={() => setIsAiPanelOpen((open) => !open)}
+        onShare={share.open}
       />
       <main className="relative flex-1">
         <ProjectSidebar
@@ -51,6 +60,7 @@ export function EditorWorkspace({
         <AiPanelPlaceholder isOpen={isAiPanelOpen} />
       </main>
       <ProjectDialogs dialogs={actions} />
+      <ShareDialog controller={share} />
     </div>
   )
 }

@@ -41,6 +41,7 @@ export default async function WorkspacePage({
     <EditorWorkspace
       projectName={project.name}
       activeProjectId={project.id}
+      isOwner={project.ownerId === identity.userId}
       ownedProjects={ownedProjects}
       sharedProjects={sharedProjects}
     />
