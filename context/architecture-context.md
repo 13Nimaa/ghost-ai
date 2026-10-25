@@ -10,7 +10,7 @@
 | Database         | Prisma + PostgreSQL     | Relational metadata: projects, collaborators, specs, task runs |
 | Canvas           | Liveblocks + React Flow | Real-time collaborative canvas, presence, and cursors          |
 | Background tasks | Trigger.dev             | Durable AI generation workflows                                |
-| Artifact storage | Vercel Blob             | Canvas snapshots and generated Markdown specs                  |
+| Artifact storage | UploadThing             | Generated Markdown specs and other file artifacts              |
 
 ## System Boundaries
 
@@ -23,11 +23,12 @@
 
 ## Storage Model
 
-- **Database**: metadata, ownership, relationships, and task run records.
-- **Vercel Blob**: generated artifacts — canvas snapshots at `canvas/{projectId}.json` and specs at `specs/{projectId}/{specId}.md`.
+- **Database**: metadata, ownership, relationships, task run records, and the latest canvas snapshot (`Project.canvasJson` as JSONB).
+- **UploadThing**: generated file artifacts — Markdown specs and similar downloads. Not used for canvas autosave.
 - Project records, spec records, and task run records belong in PostgreSQL.
-- Canvas content and Markdown output are stored in and retrieved from Vercel Blob.
-- The blob URL is stored in the database (`canvasJsonPath`, `filePath`) as the reference to the artifact.
+- Canvas snapshots are overwritten in place on the project row; there is no per-save file upload.
+- Spec Markdown output is stored in UploadThing; the file URL/key references live on the linked database record when that feature lands.
+- The UploadThing API token stays server-side only.
 
 ## Auth and Collaboration Model
 

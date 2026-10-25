@@ -9,7 +9,9 @@ import {
 } from "lucide-react"
 import { UserButton } from "@clerk/nextjs"
 
+import { CanvasSaveStatusIndicator } from "@/components/editor/canvas-save-status"
 import { Button } from "@/components/ui/button"
+import type { CanvasSaveStatus } from "@/hooks/use-canvas-autosave"
 
 interface EditorNavbarProps {
   isSidebarOpen: boolean
@@ -19,6 +21,8 @@ interface EditorNavbarProps {
   onToggleAiPanel?: () => void
   onShare?: () => void
   onOpenTemplates?: () => void
+  showUserButton?: boolean
+  saveStatus?: CanvasSaveStatus
 }
 
 export function EditorNavbar({
@@ -29,6 +33,8 @@ export function EditorNavbar({
   onToggleAiPanel,
   onShare,
   onOpenTemplates,
+  showUserButton = true,
+  saveStatus = "idle",
 }: EditorNavbarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-surface-border bg-base px-3">
@@ -58,6 +64,7 @@ export function EditorNavbar({
       <div className="flex items-center gap-2" />
 
       <div className="flex flex-none items-center gap-2">
+        <CanvasSaveStatusIndicator status={saveStatus} />
         {onOpenTemplates ? (
           <Button
             variant="outline"
@@ -94,7 +101,7 @@ export function EditorNavbar({
             AI
           </Button>
         ) : null}
-        <UserButton />
+        {showUserButton ? <UserButton /> : null}
       </div>
     </header>
   )

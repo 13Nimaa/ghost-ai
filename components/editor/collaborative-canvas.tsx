@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useRef, useState, type DragEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react"
 import {
   Background,
   BackgroundVariant,
@@ -24,6 +31,7 @@ import {
   useRedo,
   useRoom,
   useUndo,
+  useUpdateMyPresence,
 } from "@liveblocks/react/suspense"
 import { ErrorBoundary } from "react-error-boundary"
 
@@ -33,6 +41,8 @@ import {
   CanvasEdgeRenderer,
 } from "@/components/editor/canvas-edge"
 import { CanvasControlBar } from "@/components/editor/canvas-control-bar"
+import { LiveCursors } from "@/components/editor/live-cursors"
+import { PresenceAvatars } from "@/components/editor/presence-avatars"
 import {
   CanvasNodeActionsProvider,
   CanvasNodeRenderer,
@@ -44,6 +54,11 @@ import {
   CANVAS_SHAPE_DRAG_TYPE,
   parseShapeDragPayload,
 } from "@/lib/canvas-drag"
+import { parseCanvasResponse } from "@/lib/canvas-snapshot"
+import {
+  useCanvasAutosave,
+  type CanvasSaveStatus,
+} from "@/hooks/use-canvas-autosave"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import {
   DEFAULT_NODE_COLOR,
@@ -57,6 +72,7 @@ interface CollaborativeCanvasProps {
   roomId: string
   isTemplatesOpen: boolean
   onTemplatesOpenChange: (open: boolean) => void
+  onSaveStatusChange: (status: CanvasSaveStatus) => void
 }
 
 const nodeTypes = {
@@ -71,6 +87,7 @@ export function CollaborativeCanvas({
   roomId,
   isTemplatesOpen,
   onTemplatesOpenChange,
+  onSaveStatusChange,
 }: CollaborativeCanvasProps) {
   return (
     <div className="h-full w-full p-2">
@@ -81,14 +98,17 @@ export function CollaborativeCanvas({
         >
           <RoomProvider
             id={roomId}
-            initialPresence={{ cursor: null, isThinking: false }}
+            initialPresence={{ cursor: null, thinking: false }}
           >
             <ClientSideSuspense
               fallback={<CanvasState message="Loading collaborative canvas…" />}
             >
               <Canvas
+                key={roomId}
+                roomId={roomId}
                 isTemplatesOpen={isTemplatesOpen}
                 onTemplatesOpenChange={onTemplatesOpenChange}
+                onSaveStatusChange={onSaveStatusChange}
               />
             </ClientSideSuspense>
           </RoomProvider>
@@ -99,11 +119,18 @@ export function CollaborativeCanvas({
 }
 
 interface CanvasProps {
+  roomId: string
   isTemplatesOpen: boolean
   onTemplatesOpenChange: (open: boolean) => void
+  onSaveStatusChange: (status: CanvasSaveStatus) => void
 }
 
-function Canvas({ isTemplatesOpen, onTemplatesOpenChange }: CanvasProps) {
+function Canvas({
+  roomId,
+  isTemplatesOpen,
+  onTemplatesOpenChange,
+  onSaveStatusChange,
+}: CanvasProps) {
   const [reactFlow, setReactFlow] = useState<
     ReactFlowInstance<CanvasNode, CanvasEdge> | null
   >(null)
@@ -113,6 +140,7 @@ function Canvas({ isTemplatesOpen, onTemplatesOpenChange }: CanvasProps) {
   const canUndo = useCanUndo()
   const canRedo = useCanRedo()
   const room = useRoom()
+  const updateMyPresence = useUpdateMyPresence()
   const {
     nodes,
     edges,
@@ -128,10 +156,149 @@ function Canvas({ isTemplatesOpen, onTemplatesOpenChange }: CanvasProps) {
 
   useKeyboardShortcuts(reactFlow, undo, redo)
 
+  const [autosaveReady, setAutosaveReady] = useState(false)
+  const loadStartedRef = useRef(false)
+  const loadContextRef = useRef({
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    room,
+    reactFlow,
+  })
+
+  useEffect(() => {
+    loadContextRef.current = {
+      nodes,
+      edges,
+      onNodesChange,
+      onEdgesChange,
+      room,
+      reactFlow,
+    }
+  }, [edges, nodes, onEdgesChange, onNodesChange, reactFlow, room])
+
+  useEffect(() => {
+    if (loadStartedRef.current) {
+      return
+    }
+
+    loadStartedRef.current = true
+
+    const { nodes: currentNodes, edges: currentEdges } = loadContextRef.current
+
+    if (currentNodes.length > 0 || currentEdges.length > 0) {
+      setAutosaveReady(true)
+      return
+    }
+
+    const controller = new AbortController()
+    let active = true
+
+    async function restoreCanvas() {
+      try {
+        const response = await fetch(
+          `/api/projects/${encodeURIComponent(roomId)}/canvas`,
+          { cache: "no-store", signal: controller.signal },
+        )
+
+        if (!response.ok) {
+          return
+        }
+
+        const snapshot = parseCanvasResponse(await response.json())
+
+        if (
+          !snapshot ||
+          (snapshot.nodes.length === 0 && snapshot.edges.length === 0)
+        ) {
+          return
+        }
+
+        const context = loadContextRef.current
+
+        if (context.nodes.length > 0 || context.edges.length > 0) {
+          return
+        }
+
+        context.room.batch(() => {
+          if (snapshot.nodes.length > 0) {
+            context.onNodesChange(
+              snapshot.nodes.map((item) => ({ type: "add" as const, item })),
+            )
+          }
+
+          if (snapshot.edges.length > 0) {
+            context.onEdgesChange(
+              snapshot.edges.map((item) => ({ type: "add" as const, item })),
+            )
+          }
+        })
+
+        window.requestAnimationFrame(() => {
+          void loadContextRef.current.reactFlow?.fitView({
+            nodes: snapshot.nodes,
+            padding: 0.18,
+            duration: 350,
+          })
+        })
+      } catch {
+        // A failed load leaves the empty room usable; autosave starts below.
+      } finally {
+        if (active) {
+          window.requestAnimationFrame(() => {
+            if (active) {
+              setAutosaveReady(true)
+            }
+          })
+        }
+      }
+    }
+
+    void restoreCanvas()
+
+    return () => {
+      active = false
+      loadStartedRef.current = false
+      controller.abort()
+    }
+  }, [roomId])
+
+  const autosave = useCanvasAutosave({
+    projectId: roomId,
+    nodes,
+    edges,
+    enabled: autosaveReady,
+  })
+
+  useEffect(() => {
+    onSaveStatusChange(autosave.status)
+  }, [autosave.status, onSaveStatusChange])
+
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = "copy"
   }, [])
+
+  const handleMouseMove = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!reactFlow) {
+        return
+      }
+
+      updateMyPresence({
+        cursor: reactFlow.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      })
+    },
+    [reactFlow, updateMyPresence],
+  )
+
+  const handleMouseLeave = useCallback(() => {
+    updateMyPresence({ cursor: null })
+  }, [updateMyPresence])
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -223,6 +390,8 @@ function Canvas({ isTemplatesOpen, onTemplatesOpenChange }: CanvasProps) {
             onDelete={onDelete}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             connectionLineType={ConnectionLineType.SmoothStep}
             connectionLineStyle={{
               stroke: "var(--text-secondary)",
@@ -234,6 +403,10 @@ function Canvas({ isTemplatesOpen, onTemplatesOpenChange }: CanvasProps) {
           >
             <MiniMap />
             <Background variant={BackgroundVariant.Dots} />
+            <LiveCursors />
+            <Panel position="top-right">
+              <PresenceAvatars />
+            </Panel>
             <Panel position="bottom-left">
               <CanvasControlBar
                 reactFlow={reactFlow}

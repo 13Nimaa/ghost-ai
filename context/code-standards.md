@@ -36,9 +36,10 @@
 
 ## Data and Storage
 
-- Project metadata and relationships belong in PostgreSQL via Prisma.
-- Canvas snapshots and generated specs belong in Vercel Blob; Prisma stores only the blob URL reference.
-- Do not store large generated content directly in the database.
+- Project metadata, relationships, and the latest canvas snapshot (`canvasJson`) belong in PostgreSQL via Prisma.
+- Generated Markdown specs and other downloadable file artifacts belong in UploadThing; Prisma stores only their URL/key references.
+- Do not store large generated Markdown/binary artifacts directly in the database. Canvas JSON is an exception: it is bounded (2 MB request limit) and overwritten in place.
+- The UploadThing API token is server-only and must never be exposed to the browser.
 - Task run records are first-class relational data — treat ownership and run IDs as verified before any token issuance.
 
 ## File Organization
