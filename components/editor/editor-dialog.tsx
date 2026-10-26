@@ -35,12 +35,14 @@ export function EditorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "rounded-3xl border border-surface-border bg-elevated text-copy-primary backdrop-blur",
+          "overflow-hidden rounded-3xl border border-surface-border bg-elevated text-copy-primary backdrop-blur",
           className
         )}
       >
-        <DialogHeader>
-          <DialogTitle className="text-copy-primary">{title}</DialogTitle>
+        <DialogHeader className="shrink-0 pr-8">
+          <DialogTitle className="truncate text-copy-primary">
+            {title}
+          </DialogTitle>
           {description ? (
             <DialogDescription className="text-copy-muted">
               {description}
@@ -50,7 +52,9 @@ export function EditorDialog({
 
         {children}
 
-        {footer ? <DialogFooter>{footer}</DialogFooter> : null}
+        {footer ? (
+          <DialogFooter className="shrink-0">{footer}</DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   )

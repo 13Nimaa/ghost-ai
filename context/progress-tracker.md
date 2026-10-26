@@ -8,7 +8,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Goal
 
-- Design agent logic lands; continue with remaining AI/spec feature work.
+- Specs tab lists/previews/downloads specs and Generate Spec triggers the backend run.
 
 ## Completed
 
@@ -45,6 +45,9 @@ Update this file whenever the current phase, active feature, or implementation s
 - `23-design-agent-logic.md` — design agent uses Gemini (`@ai-sdk/google`) + `mutateFlow` for canvas actions (add/move/resize/update/delete nodes and edges), Liveblocks ephemeral AI presence (`thinking` + cursor), room `AI_STATUS` broadcast feed, canvas status UI, thinking cursor badges, and AI Architect panel wired to the design API + `useRealtimeRun`.
 - `25-sidebar-chat-feed.md` — added the room-scoped Liveblocks `ai-chat` feed, created/reused it during authenticated room setup, and added Zod validation for sender/role/content/timestamp payloads. The AI sidebar now reads validated messages in chronological order, shows sender and UTC timestamp metadata, sends through the existing composer, clears only after successful sends, and surfaces feed/send errors. The chat feed remains separate from the `ai-status-feed`; AI-generated replies and backend task triggering remain outside this feature’s scope. Verified with `npx tsc --noEmit` and targeted ESLint.
 - `26-ai-chat-functional.md` — connected the AI Architect composer to the existing design API and run-token endpoint, subscribes to each run with `useRealtimeRun`, disables the prompt while generation is active, posts final/error replies to the shared `ai-chat` feed, and renders the latest `ai-status-feed` message in the active-run status strip. The existing `useLiveblocksFlow` canvas remains the sole source of realtime graph updates. Verified with `npx tsc --noEmit`, `npm run lint`, and `npm run build`.
+- `27-spec-generation-flow.md` — backend-only spec generation: `POST /api/ai/spec` authenticates, resolves project access from `roomId` (aligned with project ID; no client `projectId`), Zod-validates `chatHistory`/`nodes`/`edges`, triggers Trigger.dev `generate-spec`, and persists a `TaskRun`; `POST /api/ai/spec/token` issues a 1h run-scoped public token for the run owner only; `src/trigger/generate-spec.ts` is a Zod `schemaTask` that uses Gemini (`generateText`) to return Markdown in `{ content }` with run metadata status updates. No frontend, persistence, or UI. Verified with `npx tsc --noEmit`.
+- `28-spec-persistence-download.md` — added the `ProjectSpec` metadata model and migration; `generate-spec` uploads Markdown through the existing server-side UploadThing client, persists its returned URL to Prisma, and cleans up an uploaded file if metadata persistence fails; added an authenticated project/spec ownership-checked Markdown attachment route at `GET /api/projects/[projectId]/specs/[specId]/download`. No frontend changes. Verified with `npx prisma validate`, `npx tsc --noEmit`, `npm run lint`, and `npm run build`.
+- `29-spec-ui-integration.md` — Specs tab now lists project specs (filename + createdAt), opens an `EditorDialog` Markdown preview (content loaded via the existing download endpoint, cleared on close), and downloads from list + modal. Added the missing metadata list route `GET /api/projects/[projectId]/specs` (assumed by this UI unit but absent from 28; returns `id`/`createdAt`/`filename` only — no Blob URLs), shared `lib/specs.ts` helpers, `hooks/use-project-specs.ts`, and `react-markdown`. Generate Spec button left unwired (out of this unit’s scope). Verified with `npx tsc --noEmit` and targeted ESLint.
 
 ## In Progress
 

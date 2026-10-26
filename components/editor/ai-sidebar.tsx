@@ -131,7 +131,7 @@ function AiSidebarInner({
           value="specs"
           className="flex min-h-0 flex-1 flex-col pt-3"
         >
-          <AiSpecsPanel />
+          <AiSpecsPanel projectId={roomId} />
         </TabsContent>
       </Tabs>
     </aside>
