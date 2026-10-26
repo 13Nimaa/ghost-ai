@@ -24,8 +24,6 @@ import {
 import { useLiveblocksFlow } from "@liveblocks/react-flow"
 import {
   ClientSideSuspense,
-  LiveblocksProvider,
-  RoomProvider,
   useCanRedo,
   useCanUndo,
   useRedo,
@@ -92,29 +90,22 @@ export function CollaborativeCanvas({
 }: CollaborativeCanvasProps) {
   return (
     <div className="h-full w-full p-2">
-      <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-        <ErrorBoundary
-          fallback={<CanvasState message="Unable to connect to this canvas." />}
-          resetKeys={[roomId]}
+      <ErrorBoundary
+        fallback={<CanvasState message="Unable to connect to this canvas." />}
+        resetKeys={[roomId]}
+      >
+        <ClientSideSuspense
+          fallback={<CanvasState message="Loading collaborative canvas…" />}
         >
-          <RoomProvider
-            id={roomId}
-            initialPresence={{ cursor: null, thinking: false }}
-          >
-            <ClientSideSuspense
-              fallback={<CanvasState message="Loading collaborative canvas…" />}
-            >
-              <Canvas
-                key={roomId}
-                roomId={roomId}
-                isTemplatesOpen={isTemplatesOpen}
-                onTemplatesOpenChange={onTemplatesOpenChange}
-                onSaveStatusChange={onSaveStatusChange}
-              />
-            </ClientSideSuspense>
-          </RoomProvider>
-        </ErrorBoundary>
-      </LiveblocksProvider>
+          <Canvas
+            key={roomId}
+            roomId={roomId}
+            isTemplatesOpen={isTemplatesOpen}
+            onTemplatesOpenChange={onTemplatesOpenChange}
+            onSaveStatusChange={onSaveStatusChange}
+          />
+        </ClientSideSuspense>
+      </ErrorBoundary>
     </div>
   )
 }

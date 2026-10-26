@@ -1,13 +1,31 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { ArrowUp, Bot } from "lucide-react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react"
+import {
+  useCreateFeedMessage,
+  useFeedMessages,
+  useSelf,
+} from "@liveblocks/react"
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
+import { ArrowUp, Bot, Loader2 } from "lucide-react"
 
+import { AiStatusFeed } from "@/components/editor/ai-status-feed"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { useAiPresenceState } from "@/hooks/use-ai-presence-state"
+import {
+  AI_CHAT_FEED,
+  type AiChatMessage,
+  validateAiChatMessage,
+} from "@/types/tasks"
 
 const STARTER_PROMPTS = [
   "Design an e-commerce backend",
@@ -18,37 +36,82 @@ const STARTER_PROMPTS = [
 const MIN_TEXTAREA_HEIGHT = 72
 const MAX_TEXTAREA_HEIGHT = 160
 
-interface ChatMessage {
+interface RenderableChatMessage extends AiChatMessage {
   id: string
-  role: "user" | "assistant"
-  content: string
+  createdAt: number
 }
 
-interface DesignRunOutput {
-  summary?: string
-  actionCount?: number
+interface ActiveDesignRun {
+  runId: string
+  publicToken: string
 }
 
-interface AiArchitectPanelProps {
-  projectId: string
-  roomId: string
+const TERMINAL_RUN_STATUSES = new Set([
+  "COMPLETED",
+  "CANCELED",
+  "CRASHED",
+  "EXPIRED",
+  "FAILED",
+  "SYSTEM_FAILURE",
+  "TIMED_OUT",
+])
+
+function readStringField(value: unknown, field: string): string | null {
+  if (typeof value !== "object" || value === null || !(field in value)) {
+    return null
+  }
+
+  const fieldValue = (value as Record<string, unknown>)[field]
+  return typeof fieldValue === "string" && fieldValue.trim().length > 0
+    ? fieldValue.trim()
+    : null
 }
 
-export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
+function getRunSummary(output: unknown): string {
+  return (
+    readStringField(output, "summary") ??
+    "Ghost AI updated the shared canvas."
+  )
+}
+
+export function AiArchitectPanel({ roomId }: { roomId: string }) {
   const [draft, setDraft] = useState("")
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeRunId, setActiveRunId] = useState<string | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [activeRun, setActiveRun] = useState<ActiveDesignRun | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const endOfMessagesRef = useRef<HTMLDivElement>(null)
-  const nextMessageId = useRef(0)
-  const handledRunRef = useRef<string | null>(null)
+  const completedRunRef = useRef<string | null>(null)
 
-  const { run } = useRealtimeRun(activeRunId ?? "", {
-    accessToken: accessToken ?? "",
-    enabled: Boolean(activeRunId && accessToken),
-  })
+  const self = useSelf()
+  const createFeedMessage = useCreateFeedMessage()
+  const feedResult = useFeedMessages(AI_CHAT_FEED, { limit: 100 })
+  const messages = ("messages" in feedResult ? feedResult.messages : []) ?? []
+  const isLoading = "isLoading" in feedResult && feedResult.isLoading
+  const hasFeedError = "error" in feedResult && Boolean(feedResult.error)
+  const sender = self?.info.name?.trim() || "Collaborator"
+  const { isAiActive: isSharedAiActive } = useAiPresenceState()
+  const isRunActive = isSubmitting || activeRun !== null || isSharedAiActive
+
+  const chatMessages = messages
+    .map((message): RenderableChatMessage | null => {
+      const data = validateAiChatMessage(message.data)
+      if (!data) return null
+
+      return {
+        ...data,
+        id: message.id,
+        createdAt: message.createdAt,
+      }
+    })
+    .filter((message): message is RenderableChatMessage => message !== null)
+    .sort((first, second) => {
+      if (first.createdAt !== second.createdAt) {
+        return first.createdAt - second.createdAt
+      }
+
+      return first.id.localeCompare(second.id)
+    })
 
   useEffect(() => {
     const textarea = textareaRef.current
@@ -63,141 +126,142 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ block: "end" })
-  }, [messages])
+  }, [chatMessages.length])
 
-  useEffect(() => {
-    if (!run || !activeRunId || handledRunRef.current === activeRunId) {
-      return
-    }
+  const createAssistantMessage = useCallback(
+    async (content: string) => {
+      await createFeedMessage(AI_CHAT_FEED, {
+        sender: "Ghost AI",
+        role: "assistant",
+        content,
+        timestamp: Date.now(),
+      })
+    },
+    [createFeedMessage],
+  )
 
-    if (run.status === "COMPLETED") {
-      handledRunRef.current = activeRunId
-      const output = run.output as DesignRunOutput | undefined
-      const summary =
-        typeof output?.summary === "string" && output.summary.length > 0
-          ? output.summary
-          : "Architecture updates are on the canvas."
+  const finishRun = useCallback(
+    async (runId: string, succeeded: boolean, output?: unknown) => {
+      if (completedRunRef.current === runId) return
+      completedRunRef.current = runId
 
-      nextMessageId.current += 1
-      setMessages((current) => [
-        ...current,
-        {
-          id: `message-${nextMessageId.current}`,
-          role: "assistant",
-          content: summary,
-        },
-      ])
-      setIsSubmitting(false)
-      setActiveRunId(null)
-      setAccessToken(null)
-      return
-    }
+      try {
+        await createAssistantMessage(
+          succeeded
+            ? getRunSummary(output)
+            : "Ghost AI could not finish this design request. Please try again.",
+        )
+      } catch {
+        setSendError("The run finished, but its reply could not be shared.")
+      } finally {
+        setActiveRun(null)
+        setIsSubmitting(false)
+        textareaRef.current?.focus()
+      }
+    },
+    [createAssistantMessage],
+  )
 
-    if (
-      run.status === "FAILED" ||
-      run.status === "CRASHED" ||
-      run.status === "SYSTEM_FAILURE" ||
-      run.status === "CANCELED" ||
-      run.status === "TIMED_OUT"
-    ) {
-      handledRunRef.current = activeRunId
-      nextMessageId.current += 1
-      setMessages((current) => [
-        ...current,
-        {
-          id: `message-${nextMessageId.current}`,
-          role: "assistant",
-          content:
-            "Something went wrong while designing. Check the canvas status and try again.",
-        },
-      ])
-      setIsSubmitting(false)
-      setActiveRunId(null)
-      setAccessToken(null)
-    }
-  }, [activeRunId, run])
+  const handleRunComplete = useCallback(
+    (completedRun: { id: string; status: string; output?: unknown }, error?: Error) => {
+      if (!error && !TERMINAL_RUN_STATUSES.has(completedRun.status)) return
+
+      void finishRun(
+        completedRun.id,
+        !error && completedRun.status === "COMPLETED",
+        completedRun.output,
+      )
+    },
+    [finishRun],
+  )
+
+  useRealtimeRun(activeRun?.runId, {
+    accessToken: activeRun?.publicToken,
+    enabled: activeRun !== null,
+    onComplete: handleRunComplete,
+    skipColumns: ["payload"],
+  })
 
   async function submit(value: string) {
     const content = value.trim()
-    if (!content || isSubmitting) return
+    if (!content || isRunActive) return
 
-    nextMessageId.current += 1
-    setMessages((current) => [
-      ...current,
-      { id: `message-${nextMessageId.current}`, role: "user", content },
-    ])
-    setDraft("")
+    const timestamp = Date.now()
+    const data: AiChatMessage = {
+      sender,
+      role: "user",
+      content,
+      timestamp,
+    }
+
     setIsSubmitting(true)
-    textareaRef.current?.focus()
+    setSendError(null)
+    let userMessageSent = false
 
     try {
+      await createFeedMessage(AI_CHAT_FEED, data, { createdAt: timestamp })
+      userMessageSent = true
+      setDraft("")
+
       const designResponse = await fetch("/api/ai/design", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: content, roomId, projectId }),
+        body: JSON.stringify({
+          prompt: content,
+          roomId,
+          projectId: roomId,
+        }),
       })
+      const designBody: unknown = await designResponse.json().catch(() => null)
+      const runId = readStringField(designBody, "runId")
 
-      if (!designResponse.ok) {
-        throw new Error("Failed to start design")
-      }
-
-      const designBody = (await designResponse.json()) as { runId?: string }
-      if (!designBody.runId) {
-        throw new Error("Missing run ID")
+      if (!designResponse.ok || !runId) {
+        throw new Error("Could not start the design run")
       }
 
       const tokenResponse = await fetch("/api/ai/design/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId: designBody.runId }),
+        body: JSON.stringify({ runId }),
       })
+      const tokenBody: unknown = await tokenResponse.json().catch(() => null)
+      const publicToken = readStringField(tokenBody, "token")
 
-      if (!tokenResponse.ok) {
-        throw new Error("Failed to create run token")
+      if (!tokenResponse.ok || !publicToken) {
+        throw new Error("Could not connect to the design run")
       }
 
-      const tokenBody = (await tokenResponse.json()) as { token?: string }
-      if (!tokenBody.token) {
-        throw new Error("Missing access token")
-      }
-
-      nextMessageId.current += 1
-      setMessages((current) => [
-        ...current,
-        {
-          id: `message-${nextMessageId.current}`,
-          role: "assistant",
-          content: "Designing on the shared canvas…",
-        },
-      ])
-
-      handledRunRef.current = null
-      setAccessToken(tokenBody.token)
-      setActiveRunId(designBody.runId)
+      completedRunRef.current = null
+      setActiveRun({ runId, publicToken })
     } catch {
-      nextMessageId.current += 1
-      setMessages((current) => [
-        ...current,
-        {
-          id: `message-${nextMessageId.current}`,
-          role: "assistant",
-          content: "Could not start the design agent. Please try again.",
-        },
-      ])
+      if (userMessageSent) {
+        try {
+          await createAssistantMessage(
+            "Ghost AI could not start this design request. Please try again.",
+          )
+        } catch {
+          setSendError("Could not share the design request error.")
+        }
+      } else {
+        setSendError("Could not send message. Please try again.")
+      }
       setIsSubmitting(false)
     }
+
+    textareaRef.current?.focus()
   }
 
   function applyStarterPrompt(prompt: string) {
+    if (isRunActive) return
     setDraft(prompt)
     textareaRef.current?.focus()
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || event.shiftKey) return
 
     // Let IME composition finish before treating Enter as a submit.
-    if (event.nativeEvent.isComposing) return
+    if (event.nativeEvent.isComposing || isRunActive) return
 
     event.preventDefault()
     void submit(draft)
@@ -205,15 +269,31 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {messages.length === 0 ? (
+      {isLoading ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-2 px-4 text-xs text-copy-muted">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          Loading room chat…
+        </div>
+      ) : hasFeedError ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs text-state-error">
+          Unable to load room chat messages.
+        </div>
+      ) : chatMessages.length === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-4 py-6">
-          <EmptyState onSelectStarterPrompt={applyStarterPrompt} />
+          <EmptyState
+            onSelectStarterPrompt={applyStarterPrompt}
+            disabled={isRunActive}
+          />
         </div>
       ) : (
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-3 px-4 py-4">
-            {messages.map((message) => (
-              <ChatMessageBubble key={message.id} message={message} />
+            {chatMessages.map((message) => (
+              <ChatMessageBubble
+                key={message.id}
+                message={message}
+                isOwn={message.sender === sender}
+              />
             ))}
             <div ref={endOfMessagesRef} />
           </div>
@@ -221,6 +301,12 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
       )}
 
       <div className="border-t border-surface-border p-3">
+        {sendError ? (
+          <p role="alert" className="mb-2 text-xs text-state-error">
+            {sendError}
+          </p>
+        ) : null}
+        <AiStatusFeed variant="sidebar" active={isRunActive} className="mb-2" />
         <div className="rounded-2xl border border-surface-border bg-elevated p-2 focus-within:border-subtle-border">
           <Textarea
             ref={textareaRef}
@@ -228,9 +314,9 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe the system you want to build..."
-            aria-label="Message Ghost AI"
-            disabled={isSubmitting}
+            placeholder="Message everyone in this room…"
+            aria-label="Message everyone in this room"
+            disabled={isRunActive}
             className="field-sizing-fixed min-h-[72px] max-h-40 resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-2 py-1 text-sm text-copy-primary shadow-none placeholder:text-copy-faint focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
           />
           <div className="mt-1 flex items-center justify-between gap-2 px-1">
@@ -240,11 +326,15 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
             <Button
               size="icon-sm"
               onClick={() => void submit(draft)}
-              disabled={!draft.trim() || isSubmitting}
-              aria-label="Send message"
-              className="rounded-xl bg-ai text-copy-primary hover:bg-ai/90"
+              disabled={!draft.trim() || isRunActive}
+              aria-label={isRunActive ? "Generating design" : "Send message"}
+              className="rounded-xl bg-state-success text-on-brand hover:bg-state-success/90"
             >
-              <ArrowUp />
+              {isRunActive ? (
+                <Loader2 className="h-4 w-4 animate-spin text-on-brand" />
+              ) : (
+                <ArrowUp />
+              )}
             </Button>
           </div>
         </div>
@@ -255,8 +345,10 @@ export function AiArchitectPanel({ projectId, roomId }: AiArchitectPanelProps) {
 
 function EmptyState({
   onSelectStarterPrompt,
+  disabled,
 }: {
   onSelectStarterPrompt: (prompt: string) => void
+  disabled?: boolean
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 px-4 py-10 text-center">
@@ -268,11 +360,10 @@ function EmptyState({
       </span>
       <div>
         <p className="text-sm font-medium text-copy-primary">
-          Start with a system design
+          Start a room conversation
         </p>
         <p className="mt-1 text-sm leading-relaxed text-copy-muted">
-          Describe what you want to build and Ghost AI maps it onto the shared
-          canvas.
+          Messages here are shared with everyone collaborating in this room.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
@@ -280,8 +371,12 @@ function EmptyState({
           <button
             key={prompt}
             type="button"
+            disabled={disabled}
             onClick={() => onSelectStarterPrompt(prompt)}
-            className="rounded-full bg-subtle px-3 py-1.5 text-xs font-medium text-ai-text transition-colors hover:bg-elevated"
+            className={cn(
+              "rounded-full bg-subtle px-3 py-1.5 text-xs font-medium text-ai-text transition-colors hover:bg-elevated",
+              disabled && "cursor-not-allowed opacity-60",
+            )}
           >
             {prompt}
           </button>
@@ -291,23 +386,47 @@ function EmptyState({
   )
 }
 
-function ChatMessageBubble({ message }: { message: ChatMessage }) {
-  const isUser = message.role === "user"
-
+function ChatMessageBubble({
+  message,
+  isOwn,
+}: {
+  message: RenderableChatMessage
+  isOwn: boolean
+}) {
   return (
-    <div
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
-    >
-      <div
-        className={cn(
-          "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-          isUser
-            ? "border-2 border-brand/50 bg-accent-dim text-copy-primary"
-            : "border border-surface-border bg-elevated text-ai-text",
-        )}
-      >
-        {message.content}
+    <div className={cn("flex w-full", isOwn ? "justify-end" : "justify-start")}>
+      <div className="max-w-[85%]">
+        <div
+          className={cn(
+            "mb-1 flex items-center gap-2 text-[0.65rem] text-copy-faint",
+            isOwn ? "justify-end" : "justify-start",
+          )}
+        >
+          <span className="font-medium text-copy-muted">{message.sender}</span>
+          <span aria-hidden>·</span>
+          <time dateTime={new Date(message.timestamp).toISOString()}>
+            {formatChatTimestamp(message.timestamp)}
+          </time>
+        </div>
+        <div
+          className={cn(
+            "whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+            isOwn
+              ? "border-2 border-state-success/50 bg-state-success text-on-brand"
+              : "border border-surface-border bg-elevated text-copy-primary",
+          )}
+        >
+          {message.content}
+        </div>
       </div>
     </div>
   )
+}
+
+function formatChatTimestamp(timestamp: number): string {
+  return `${new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(timestamp))} UTC`
 }

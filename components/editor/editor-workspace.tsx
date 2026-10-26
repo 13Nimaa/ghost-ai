@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { LiveblocksProvider, RoomProvider } from "@liveblocks/react/suspense"
 
 import { AiSidebar } from "@/components/editor/ai-sidebar"
 import { CollaborativeCanvas } from "@/components/editor/collaborative-canvas"
@@ -40,45 +41,50 @@ export function EditorWorkspace({
   })
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-base">
-      <EditorNavbar
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
-        projectName={projectName}
-        isAiPanelOpen={isAiPanelOpen}
-        onToggleAiPanel={() => setIsAiPanelOpen((open) => !open)}
-        onShare={share.open}
-        onOpenTemplates={() => setIsTemplatesOpen(true)}
-        showUserButton={false}
-        saveStatus={canvasSaveStatus}
-      />
-      <main className="relative flex-1">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          activeProjectId={activeProjectId}
-          onCreate={actions.openCreate}
-          onRename={actions.openRename}
-          onDelete={actions.openDelete}
-        />
-        <CollaborativeCanvas
-          roomId={activeProjectId}
-          isTemplatesOpen={isTemplatesOpen}
-          onTemplatesOpenChange={setIsTemplatesOpen}
-          onSaveStatusChange={setCanvasSaveStatus}
-        />
-        <AiSidebar
-          isOpen={isAiPanelOpen}
-          onClose={() => setIsAiPanelOpen(false)}
-          projectId={activeProjectId}
-          roomId={activeProjectId}
-        />
-      </main>
-      <ProjectDialogs dialogs={actions} />
-      <ShareDialog controller={share} />
-    </div>
+    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
+      <RoomProvider
+        id={activeProjectId}
+        initialPresence={{ cursor: null, thinking: false }}
+      >
+        <div className="flex h-screen flex-col overflow-hidden bg-base">
+          <EditorNavbar
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
+            projectName={projectName}
+            isAiPanelOpen={isAiPanelOpen}
+            onToggleAiPanel={() => setIsAiPanelOpen((open) => !open)}
+            onShare={share.open}
+            onOpenTemplates={() => setIsTemplatesOpen(true)}
+            showUserButton={false}
+            saveStatus={canvasSaveStatus}
+          />
+          <main className="relative flex-1">
+            <ProjectSidebar
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
+              ownedProjects={ownedProjects}
+              sharedProjects={sharedProjects}
+              activeProjectId={activeProjectId}
+              onCreate={actions.openCreate}
+              onRename={actions.openRename}
+              onDelete={actions.openDelete}
+            />
+            <CollaborativeCanvas
+              roomId={activeProjectId}
+              isTemplatesOpen={isTemplatesOpen}
+              onTemplatesOpenChange={setIsTemplatesOpen}
+              onSaveStatusChange={setCanvasSaveStatus}
+            />
+            <AiSidebar
+              isOpen={isAiPanelOpen}
+              onClose={() => setIsAiPanelOpen(false)}
+              roomId={activeProjectId}
+            />
+          </main>
+          <ProjectDialogs dialogs={actions} />
+          <ShareDialog controller={share} />
+        </div>
+      </RoomProvider>
+    </LiveblocksProvider>
   )
 }
-

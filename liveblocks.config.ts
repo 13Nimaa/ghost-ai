@@ -18,8 +18,10 @@ declare global {
 
     RoomEvent: {
       type: "AI_STATUS";
+      feed?: string;
       phase: "start" | "processing" | "complete" | "error";
-      message: string;
+      message?: string;
+      text?: string;
     };
     ThreadMetadata: Record<string, never>;
     RoomInfo: Record<string, never>;

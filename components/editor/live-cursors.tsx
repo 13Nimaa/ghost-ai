@@ -1,5 +1,6 @@
 "use client"
 
+import { Loader2 } from "lucide-react"
 import { useViewport } from "@xyflow/react"
 import { useOthers } from "@liveblocks/react/suspense"
 
@@ -71,10 +72,16 @@ export function LiveCursors() {
           </svg>
           {name || thinking ? (
             <span
-              className="ml-3.5 mt-3 inline-block max-w-48 truncate rounded-md px-2 py-0.5 text-xs font-medium leading-tight text-copy-primary"
+              className="ml-3.5 mt-3 inline-flex max-w-48 items-center gap-1.5 truncate rounded-md px-2 py-0.5 text-xs font-medium leading-tight text-copy-primary shadow-sm"
               style={{ backgroundColor: color }}
             >
-              {thinking ? `${name || "AI"} · thinking` : name}
+              {thinking ? (
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin text-copy-primary"
+                  aria-hidden
+                />
+              ) : null}
+              <span className="truncate">{name || "AI"}</span>
             </span>
           ) : null}
         </div>

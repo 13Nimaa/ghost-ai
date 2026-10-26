@@ -1,4 +1,6 @@
 import { checkProjectAccess, getCurrentClerkIdentity } from "@/lib/project-access"
+import { ensureAiChatFeed } from "@/lib/ai-chat"
+import { ensureAiStatusFeed } from "@/lib/ai-room"
 import { getCursorColor, getLiveblocksClient } from "@/lib/liveblocks"
 
 interface LiveblocksAuthBody {
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
   await liveblocks.getOrCreateRoom(projectId, {
     defaultAccesses: [],
   })
+  await ensureAiChatFeed(projectId)
+  await ensureAiStatusFeed(projectId)
 
   const session = liveblocks.prepareSession(identity.userId, {
     userInfo: {

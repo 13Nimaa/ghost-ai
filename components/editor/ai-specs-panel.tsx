@@ -1,9 +1,10 @@
 "use client"
 
-import { Download, FileText, Sparkles } from "lucide-react"
+import { Download, FileText, Loader2, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useAiPresenceState } from "@/hooks/use-ai-presence-state"
 
 interface DemoSpec {
   title: string
@@ -19,12 +20,26 @@ const DEMO_SPEC: DemoSpec = {
 }
 
 export function AiSpecsPanel() {
+  const { isAiActive } = useAiPresenceState()
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-4">
-        <Button className="h-9 w-full rounded-xl bg-ai text-copy-primary hover:bg-ai/90">
-          <Sparkles />
-          Generate Spec
+        <Button
+          disabled={isAiActive}
+          className="h-9 w-full rounded-xl bg-ai text-copy-primary hover:bg-ai/90"
+        >
+          {isAiActive ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating…
+            </>
+          ) : (
+            <>
+              <Sparkles />
+              Generate Spec
+            </>
+          )}
         </Button>
         <p className="mt-2 text-center text-xs text-copy-muted">
           Turn the current canvas into a Markdown spec.
