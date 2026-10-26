@@ -11,9 +11,16 @@ import { cn } from "@/lib/utils"
 interface AiSidebarProps {
   isOpen: boolean
   onClose: () => void
+  projectId: string
+  roomId: string
 }
 
-export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
+export function AiSidebar({
+  isOpen,
+  onClose,
+  projectId,
+  roomId,
+}: AiSidebarProps) {
   return (
     <aside
       aria-hidden={!isOpen}
@@ -71,7 +78,7 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
           value="architect"
           className="flex min-h-0 flex-1 flex-col pt-3"
         >
-          <AiArchitectPanel />
+          <AiArchitectPanel projectId={projectId} roomId={roomId} />
         </TabsContent>
         <TabsContent
           value="specs"

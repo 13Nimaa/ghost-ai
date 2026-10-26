@@ -10,6 +10,7 @@ interface CollaboratorCursor {
   cursor: { x: number; y: number }
   color: string
   name: string
+  thinking: boolean
 }
 
 export function LiveCursors() {
@@ -30,6 +31,7 @@ export function LiveCursors() {
       cursor,
       color: other.info?.color ?? FALLBACK_COLOR,
       name: other.info?.name ?? "",
+      thinking: other.presence.thinking === true,
     })
   }
 
@@ -42,7 +44,7 @@ export function LiveCursors() {
       aria-hidden
       className="pointer-events-none absolute inset-0 z-[4] overflow-hidden"
     >
-      {cursors.map(({ connectionId, cursor, color, name }) => (
+      {cursors.map(({ connectionId, cursor, color, name, thinking }) => (
         <div
           key={connectionId}
           className="absolute left-0 top-0"
@@ -67,12 +69,12 @@ export function LiveCursors() {
               strokeLinejoin="round"
             />
           </svg>
-          {name ? (
+          {name || thinking ? (
             <span
-              className="ml-3.5 mt-3 inline-block max-w-40 truncate rounded-md px-2 py-0.5 text-xs font-medium leading-tight text-copy-primary"
+              className="ml-3.5 mt-3 inline-block max-w-48 truncate rounded-md px-2 py-0.5 text-xs font-medium leading-tight text-copy-primary"
               style={{ backgroundColor: color }}
             >
-              {name}
+              {thinking ? `${name || "AI"} · thinking` : name}
             </span>
           ) : null}
         </div>

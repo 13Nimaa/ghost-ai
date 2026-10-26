@@ -41,6 +41,7 @@ import {
   CanvasEdgeRenderer,
 } from "@/components/editor/canvas-edge"
 import { CanvasControlBar } from "@/components/editor/canvas-control-bar"
+import { AiStatusFeed } from "@/components/editor/ai-status-feed"
 import { LiveCursors } from "@/components/editor/live-cursors"
 import { PresenceAvatars } from "@/components/editor/presence-avatars"
 import {
@@ -404,6 +405,9 @@ function Canvas({
             <MiniMap />
             <Background variant={BackgroundVariant.Dots} />
             <LiveCursors />
+            <Panel position="top-left">
+              <AiStatusFeed />
+            </Panel>
             <Panel position="top-right">
               <PresenceAvatars />
             </Panel>

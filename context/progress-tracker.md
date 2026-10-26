@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Phase 2 — Collaborative Canvas
+- Phase 2 — Collaborative Canvas / AI generation
 
 ## Current Goal
 
-- Canvas autosave now persists to Postgres (`canvasJson`); continue with the next feature spec.
+- Design agent logic lands; continue with remaining AI/spec feature work.
 
 ## Completed
 
@@ -41,6 +41,8 @@ Update this file whenever the current phase, active feature, or implementation s
 
 - `21-canvas-autosave-uploadthing.md` — added canvas autosave/load with Clerk auth, owner-or-collaborator access checks, streamed 2 MB body limit, shared snapshot validation (`lib/canvas-snapshot.ts`), `hooks/use-canvas-autosave.ts` (1.5s debounce, hydration gate, serialized saves, duplicate suppression), Liveblocks empty-room restore, and navbar `CanvasSaveStatusIndicator`. Initially stored snapshots in UploadThing (`canvasFileUrl`/`canvasFileKey`); later moved to Postgres `canvasJson` to avoid free-tier upload churn (see session notes).
 - Canvas persistence cutover — replaced UploadThing canvas file storage with `Project.canvasJson` (JSONB). Applied migration `20261025140000_canvas_json_postgres`, rewrote `PUT`/`GET /api/projects/[projectId]/canvas` to read/write the column in place, removed `lib/canvas-storage.ts` and project-delete UploadThing cleanup, and kept `uploadthing` only for future generated specs. Updated architecture/code-standards/project-overview docs.
+- `22-design-agent-api.md` — `POST /api/ai/design` triggers Trigger.dev `design-agent`, persists `TaskRun`, and `POST /api/ai/design/token` returns a run-scoped public token.
+- `23-design-agent-logic.md` — design agent uses Gemini (`@ai-sdk/google`) + `mutateFlow` for canvas actions (add/move/resize/update/delete nodes and edges), Liveblocks ephemeral AI presence (`thinking` + cursor), room `AI_STATUS` broadcast feed, canvas status UI, thinking cursor badges, and AI Architect panel wired to the design API + `useRealtimeRun`.
 
 ## In Progress
 

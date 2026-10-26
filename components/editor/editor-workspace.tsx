@@ -72,6 +72,8 @@ export function EditorWorkspace({
         <AiSidebar
           isOpen={isAiPanelOpen}
           onClose={() => setIsAiPanelOpen(false)}
+          projectId={activeProjectId}
+          roomId={activeProjectId}
         />
       </main>
       <ProjectDialogs dialogs={actions} />
