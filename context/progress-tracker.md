@@ -57,6 +57,12 @@ Update this file whenever the current phase, active feature, or implementation s
 
 - Continue with the next feature spec.
 
+## Session Notes (canvas UX fixes)
+
+- Removed React Flow `MiniMap` from the editor canvas.
+- Shape panel supports click-to-select (brand active state); with a shape selected, clicking empty canvas places it (Escape or re-click shape clears selection). Drag-and-drop still works.
+- New nodes are centered on the cursor/drop point so placement matches the centered drag preview.
+
 ## Open Questions
 
 - Add unresolved product or implementation questions here.

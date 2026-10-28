@@ -1,6 +1,9 @@
 import {
+  DEFAULT_NODE_COLOR,
   NODE_SHAPES,
   SHAPE_DEFAULT_SIZES,
+  type CanvasNode,
+  type CanvasNodeSize,
   type CanvasShape,
   type ShapeDragPayload,
 } from "@/types/canvas"
@@ -11,6 +14,39 @@ export function createShapeDragPayload(shape: CanvasShape): ShapeDragPayload {
   return {
     shape,
     size: SHAPE_DEFAULT_SIZES[shape],
+  }
+}
+
+/** Place the node's top-left so its center sits on the cursor/drop point. */
+export function centeredNodePosition(
+  flowPoint: { x: number; y: number },
+  size: CanvasNodeSize,
+) {
+  return {
+    x: flowPoint.x - size.width / 2,
+    y: flowPoint.y - size.height / 2,
+  }
+}
+
+export function createCanvasShapeNode(
+  shape: CanvasShape,
+  flowPoint: { x: number; y: number },
+  counter: number,
+): CanvasNode {
+  const size = SHAPE_DEFAULT_SIZES[shape]
+
+  return {
+    id: `${shape}-${Date.now()}-${counter}`,
+    type: "canvasNode",
+    position: centeredNodePosition(flowPoint, size),
+    width: size.width,
+    height: size.height,
+    data: {
+      label: "",
+      color: DEFAULT_NODE_COLOR.fill,
+      textColor: DEFAULT_NODE_COLOR.text,
+      shape,
+    },
   }
 }
 

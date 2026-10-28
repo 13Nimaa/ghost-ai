@@ -197,8 +197,8 @@ export function CanvasEdgeRenderer({
               <span
                 className={
                   label
-                    ? "block rounded-xl border border-surface-border bg-elevated px-2.5 py-1 text-xs leading-none text-copy-secondary shadow-sm"
-                    : "block rounded-xl border border-subtle-border bg-surface/90 px-2.5 py-1 text-xs leading-none text-copy-faint"
+                    ? "block rounded-xl border border-surface-border bg-elevated px-2.5 py-1 text-xs leading-none text-copy-primary shadow-sm"
+                    : "block rounded-xl border border-subtle-border bg-surface/90 px-2.5 py-1 text-xs leading-none text-copy-muted"
                 }
               >
                 {label || "Add label"}

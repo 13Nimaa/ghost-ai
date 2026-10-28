@@ -120,10 +120,7 @@ export function CanvasNodeRenderer({
   }
 
   return (
-    <div
-      className="group/canvas-node relative h-full w-full"
-      style={{ color: activeColor.text }}
-    >
+    <div className="group/canvas-node relative h-full w-full text-copy-primary">
       {[
         { id: "top", position: Position.Top },
         { id: "right", position: Position.Right },
@@ -168,7 +165,8 @@ export function CanvasNodeRenderer({
       />
       <CanvasShapeVisual color={data.color} selected={selected} shape={data.shape} />
       <div
-        className="absolute inset-0 z-10 flex items-center justify-center px-4 text-center text-sm"
+        className="absolute inset-0 z-10 flex items-center justify-center px-4 text-center text-base text-copy-primary"
+        style={{ color: "var(--text-primary)" }}
         onDoubleClick={(event) => {
           event.stopPropagation()
           setDraftLabel(data.label)
@@ -179,7 +177,11 @@ export function CanvasNodeRenderer({
           <textarea
             ref={textareaRef}
             aria-label="Node label"
-            className="nodrag nopan nowheel field-sizing-content min-h-5 w-full max-h-full resize-none overflow-auto border-0 bg-transparent px-1 py-0 text-center leading-5 outline-none placeholder:text-copy-muted"
+            className="nodrag nopan nowheel field-sizing-content min-h-6 w-full max-h-full resize-none overflow-auto border-0 bg-transparent px-1 py-0 text-center text-base leading-6 text-copy-primary outline-none placeholder:text-copy-muted"
+            style={{
+              color: "var(--text-primary)",
+              caretColor: "var(--text-primary)",
+            }}
             onBlur={() => setIsEditing(false)}
             onChange={(event) => handleLabelChange(event.target.value)}
             onDoubleClick={(event) => event.stopPropagation()}
@@ -190,7 +192,10 @@ export function CanvasNodeRenderer({
             value={draftLabel}
           />
         ) : (
-          <span className={data.label ? undefined : "opacity-60"}>
+          <span
+            className={data.label ? undefined : "opacity-60"}
+            style={{ color: "var(--text-primary)" }}
+          >
             {data.label || "Add label"}
           </span>
         )}

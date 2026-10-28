@@ -22,7 +22,7 @@ export function CanvasShapeVisual({
     return (
       <div
         className={cn(
-          "flex h-full w-full items-center justify-center border px-3 text-center text-sm transition-colors",
+          "flex h-full w-full items-center justify-center border px-3 text-center text-base transition-colors text-copy-primary",
           borderClassName,
           shape === "rectangle" && "rounded-xl",
           shape === "pill" && "rounded-full",
@@ -39,12 +39,12 @@ export function CanvasShapeVisual({
   return (
     <div
       className={cn(
-        "relative flex h-full w-full items-center justify-center text-center text-sm",
+        "relative flex h-full w-full items-center justify-center text-center text-base text-copy-primary",
         className,
       )}
     >
       <ShapeSvg color={color} selected={selected} shape={shape} />
-      <span className="relative z-10 px-5">{label}</span>
+      <span className="relative z-10 px-5 text-copy-primary">{label}</span>
     </div>
   )
 }

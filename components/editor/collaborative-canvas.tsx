@@ -13,7 +13,6 @@ import {
   BackgroundVariant,
   ConnectionLineType,
   ConnectionMode,
-  MiniMap,
   Panel,
   ReactFlow,
   type Connection,
@@ -51,6 +50,7 @@ import type { CanvasTemplate } from "@/components/editor/starter-templates"
 import { StarterTemplatesModal } from "@/components/editor/starter-templates-modal"
 import {
   CANVAS_SHAPE_DRAG_TYPE,
+  createCanvasShapeNode,
   parseShapeDragPayload,
 } from "@/lib/canvas-drag"
 import { parseCanvasResponse } from "@/lib/canvas-snapshot"
@@ -60,9 +60,9 @@ import {
 } from "@/hooks/use-canvas-autosave"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import {
-  DEFAULT_NODE_COLOR,
   type CanvasEdge,
   type CanvasNode,
+  type CanvasShape,
 } from "@/types/canvas"
 
 import "@xyflow/react/dist/style.css"
@@ -126,6 +126,7 @@ function Canvas({
   const [reactFlow, setReactFlow] = useState<
     ReactFlowInstance<CanvasNode, CanvasEdge> | null
   >(null)
+  const [selectedShape, setSelectedShape] = useState<CanvasShape | null>(null)
   const nodeCounter = useRef(0)
   const undo = useUndo()
   const redo = useRedo()
@@ -147,6 +148,21 @@ function Canvas({
   })
 
   useKeyboardShortcuts(reactFlow, undo, redo)
+
+  useEffect(() => {
+    if (!selectedShape) {
+      return
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelectedShape(null)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedShape])
 
   const [autosaveReady, setAutosaveReady] = useState(false)
   const loadStartedRef = useRef(false)
@@ -299,6 +315,28 @@ function Canvas({
     [onConnect],
   )
 
+  const placeShapeAtScreenPoint = useCallback(
+    (shape: CanvasShape, clientX: number, clientY: number) => {
+      if (!reactFlow) {
+        return
+      }
+
+      nodeCounter.current += 1
+      const flowPoint = reactFlow.screenToFlowPosition({
+        x: clientX,
+        y: clientY,
+      })
+
+      onNodesChange([
+        {
+          type: "add",
+          item: createCanvasShapeNode(shape, flowPoint, nodeCounter.current),
+        },
+      ])
+    },
+    [onNodesChange, reactFlow],
+  )
+
   const handleDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault()
@@ -307,32 +345,25 @@ function Canvas({
         event.dataTransfer.getData(CANVAS_SHAPE_DRAG_TYPE),
       )
 
-      if (!payload || !reactFlow) {
+      if (!payload) {
         return
       }
 
-      nodeCounter.current += 1
+      placeShapeAtScreenPoint(payload.shape, event.clientX, event.clientY)
+    },
+    [placeShapeAtScreenPoint],
+  )
 
-      const node: CanvasNode = {
-        id: `${payload.shape}-${Date.now()}-${nodeCounter.current}`,
-        type: "canvasNode",
-        position: reactFlow.screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        }),
-        width: payload.size.width,
-        height: payload.size.height,
-        data: {
-          label: "",
-          color: DEFAULT_NODE_COLOR.fill,
-          textColor: DEFAULT_NODE_COLOR.text,
-          shape: payload.shape,
-        },
+  const handlePaneClick = useCallback(
+    (event: ReactMouseEvent) => {
+      if (!selectedShape) {
+        return
       }
 
-      onNodesChange([{ type: "add", item: node }])
+      placeShapeAtScreenPoint(selectedShape, event.clientX, event.clientY)
+      setSelectedShape(null)
     },
-    [onNodesChange, reactFlow],
+    [placeShapeAtScreenPoint, selectedShape],
   )
 
   const handleImportTemplate = useCallback(
@@ -382,6 +413,7 @@ function Canvas({
             onDelete={onDelete}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+            onPaneClick={handlePaneClick}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             connectionLineType={ConnectionLineType.SmoothStep}
@@ -391,9 +423,16 @@ function Canvas({
               strokeWidth: 1.5,
             }}
             connectionMode={ConnectionMode.Loose}
+            panOnDrag={!selectedShape}
+            elementsSelectable={!selectedShape}
+            nodesDraggable={!selectedShape}
+            className={
+              selectedShape
+                ? "[&_.react-flow__pane]:cursor-crosshair"
+                : undefined
+            }
             fitView
           >
-            <MiniMap />
             <Background variant={BackgroundVariant.Dots} />
             <LiveCursors />
             <Panel position="top-left">
@@ -412,7 +451,10 @@ function Canvas({
               />
             </Panel>
             <Panel position="bottom-center">
-              <ShapePanel />
+              <ShapePanel
+                selectedShape={selectedShape}
+                onSelectedShapeChange={setSelectedShape}
+              />
             </Panel>
           </ReactFlow>
         </CanvasNodeActionsProvider>

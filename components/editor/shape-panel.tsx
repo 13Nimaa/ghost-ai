@@ -14,6 +14,7 @@ import {
   createShapeDragPayload,
 } from "@/lib/canvas-drag"
 import { CanvasShapeVisual } from "@/components/editor/canvas-shape"
+import { cn } from "@/lib/utils"
 import {
   DEFAULT_NODE_COLOR,
   SHAPE_DEFAULT_SIZES,
@@ -35,7 +36,15 @@ const SHAPE_OPTIONS: ShapeOption[] = [
   { shape: "hexagon", label: "Hexagon", icon: Hexagon },
 ]
 
-export function ShapePanel() {
+interface ShapePanelProps {
+  selectedShape: CanvasShape | null
+  onSelectedShapeChange: (shape: CanvasShape | null) => void
+}
+
+export function ShapePanel({
+  selectedShape,
+  onSelectedShapeChange,
+}: ShapePanelProps) {
   const previewElements = useRef<
     Partial<Record<CanvasShape, HTMLDivElement | null>>
   >({})
@@ -63,6 +72,10 @@ export function ShapePanel() {
     }
   }
 
+  function handleSelect(shape: CanvasShape) {
+    onSelectedShapeChange(selectedShape === shape ? null : shape)
+  }
+
   return (
     <>
       <div
@@ -70,19 +83,30 @@ export function ShapePanel() {
         className="flex items-center gap-1 rounded-full border border-surface-border bg-elevated/95 p-1.5 shadow-lg backdrop-blur"
         role="toolbar"
       >
-        {SHAPE_OPTIONS.map(({ shape, label, icon: Icon }) => (
-          <button
-            key={shape}
-            type="button"
-            draggable
-            onDragStart={(event) => handleDragStart(event, shape)}
-            className="flex h-10 w-10 cursor-grab items-center justify-center rounded-full text-copy-muted transition-colors hover:bg-subtle hover:text-copy-primary active:cursor-grabbing"
-            aria-label={`Drag ${label}`}
-            title={label}
-          >
-            <Icon className="h-5 w-5" />
-          </button>
-        ))}
+        {SHAPE_OPTIONS.map(({ shape, label, icon: Icon }) => {
+          const isSelected = selectedShape === shape
+
+          return (
+            <button
+              key={shape}
+              type="button"
+              draggable
+              onClick={() => handleSelect(shape)}
+              onDragStart={(event) => handleDragStart(event, shape)}
+              className={cn(
+                "flex h-10 w-10 cursor-grab items-center justify-center rounded-full transition-colors active:cursor-grabbing",
+                isSelected
+                  ? "bg-accent-dim text-brand"
+                  : "text-copy-muted hover:bg-subtle hover:text-copy-primary",
+              )}
+              aria-label={isSelected ? `${label} selected` : `Select ${label}`}
+              aria-pressed={isSelected}
+              title={label}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+          )
+        })}
       </div>
       <div aria-hidden="true" className="pointer-events-none fixed -left-[10000px] top-0">
         {SHAPE_OPTIONS.map(({ shape }) => {
